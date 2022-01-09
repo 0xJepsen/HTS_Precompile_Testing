@@ -7,8 +7,14 @@ pragma solidity >=0.4.9 <0.9.0;
 // import "asdasd";
 import "interfaces/IHederaTokenService.sol";
 
-contract FundMe {
+contract FundMe is HederaTokenService{
     // using SafeMathChainlink for uint256;
+    function transferMultipleTokens(IHederaTokenService.TokenTransferList[] memory tokenTransfers) external {
+    int response = HederaTokenService.cryptoTransfer(tokenTransfers);
+    if (response != HederaResponseCodes.SUCCESS) {
+        revert ("Crypto Transfer Failed");
+        }
+    }
 
     mapping(address => uint256) public addressToAmountFunded;
     address[] public funders;
