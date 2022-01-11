@@ -2,61 +2,58 @@
 
 pragma solidity >=0.4.9 <0.9.0;
 
-// import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
-// import "@chainlink/contracts/src/v0.6/vendor/SafeMathChainlink.sol";
-// import "asdasd";
 import "./HederaTokenService.sol";
+import "./HederaResponseCodes.sol";
 
 contract FundMe is HederaTokenService {
-    // using SafeMathChainlink for uint256;
-    // function transferMultipleTokens(
-    //     IHederaTokenService.TokenTransferList[] memory tokenTransfers
-    // ) external {
-    //     int256 response = HederaTokenService.cryptoTransfer(tokenTransfers);
-    //     if (response != HederaResponseCodes.SUCCESS) {
-    //         revert("Crypto Transfer Failed");
-    //     }
-    // }
+    address tokenAddress;
+    int64 deposited;
+    uint256 lastWithdrawalTime;
 
-    mapping(address => uint256) public addressToAmountFunded;
-    address[] public funders;
-    address public owner;
-    uint256 public price;
-
-    constructor(uint256 _price) {
-        price = _price;
-        owner = msg.sender;
+    constructor(address _tokenAddress) {
+        tokenAddress = _tokenAddress;
     }
 
-    function fund() public payable {
-        uint256 minimumUSD = 50 * 10**18;
-        require(msg.value >= price, "You need to spend more ETH!");
-        addressToAmountFunded[msg.sender] += msg.value;
-        funders.push(msg.sender);
-    }
-
-    modifier onlyOwner() {
-        require(msg.sender == owner);
-        _;
-    }
-
-    function getEntranceFee() public view returns (uint256) {
-        uint256 minimumUSD = 50 * 10**18;
-        // uint256 price = getPrice();
-        uint256 precision = 1 * 10**18;
-        return (minimumUSD * precision) / price;
-    }
-
-    function withdraw() public payable onlyOwner {
-        msg.sender.transfer(address(this).balance);
-        for (
-            uint256 funderIndex = 0;
-            funderIndex < funders.length;
-            funderIndex++
-        ) {
-            address funder = funders[funderIndex];
-            addressToAmountFunded[funder] = 0;
+    function depositTokens(int64 amount) public {
+        int256 response = HederaTokenService.transferToken(
+            tokenAddress,
+            msg.sender,
+            address(this),
+            amount
+        );
+        if (response != HederaResponseCodes.SUCCESS) {
+            revert("Deposit Failed");
         }
-        funders = new address[](0);
+
+        deposited += amount;
+    }
+
+    function withdrawTokens() external {
+        if (block.timestamp <= lastWithdrawalTime) {
+            revert("Already withdrew this second");
+        }
+
+        int256 associateResponse = HederaTokenService.associateToken(
+            msg.sender,
+            tokenAddress
+        );
+        if (associateResponse != HederaResponseCodes.SUCCESS) {
+            revert("Could not associate account");
+        }
+
+        depositTokens(-deposited / 2);
+
+        lastWithdrawalTime = block.timestamp;
+    }
+
+    function tokenAssociate(address _sender, address _tokenAddress) external {
+        int256 response = HederaTokenService.associateToken(
+            _sender,
+            _tokenAddress
+        );
+
+        if (response != HederaResponseCodes.SUCCESS) {
+            revert("Associate Failed");
+        }
     }
 }
