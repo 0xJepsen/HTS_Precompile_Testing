@@ -1,5 +1,5 @@
-const { Client, 
-    ContractCreateTransaction, FileCreateTransaction, FileId, Hbar, PrivateKey, ContractCallQuery, ContractFunctionParameters, ContractExecuteTransaction, AccountId } = require("@hashgraph/sdk");
+const { Client, TokenCreateTransaction, ContractCreateTransaction, FileCreateTransaction, FileId, Hbar, PrivateKey, ContractCallQuery, ContractFunctionParameters, ContractExecuteTransaction } = require("@hashgraph/sdk");
+const { createToken } = require("typescript");
 require("dotenv").config();
 const json = require('./contracts/FundMe_sol_FundMe.abi');
 
@@ -17,6 +17,17 @@ async function main () {
 
     client.setOperator(myAccountId, myPrivateKey)
 
+    const token = await new TokenCreateTransaction()
+        .setTokenName("HTS Testing")
+        .setTokenSymbol("HTS")
+        .setTreasuryAccountId(myAccountId)
+        .setInitialSupply(5000)
+        .setMaxTransactionFee(new Hbar(30)) //Change the default max transaction fee
+        .execute(client);
+
+    const TokenReceipt = await token.getReceipt(client)
+    const tokenID = TokenReceipt.tokenId
+    
     const compiled = json['data']['bytecode']['object'];
     // Store Contact in file service. Different from eth. Transaction size is smaller on hedera for security 
     const mycontract = await new FileCreateTransaction()
@@ -34,34 +45,34 @@ async function main () {
         .setGas(300)
         .setBytecodeFileId(fileid)
         .setConstructorParameters(new ContractFunctionParameters()
-            .addAddress(AccountId.toSolidityAddress()))
+            .addAddress(tokenID.toSolidityAddress()))
         .execute(client);
 
     const receipt = await deploy.getReceipt(client); //Get the new contract 
     const newContractId = receipt.contractId;        
     console.log("The contract ID is " + newContractId);
 
-    const setter = await new ContractExecuteTransaction()
-        .setContractId(newContractId)
-        .setGas(400000)
-        .setFunction("set", new ContractFunctionParameters().addUint256(7))
-        .setMaxTransactionFee(new Hbar(3))
+    // const setter = await new ContractExecuteTransaction()
+    //     .setContractId(newContractId)
+    //     .setGas(400000)
+    //     .setFunction("set", new ContractFunctionParameters().addUint256(7))
+    //     .setMaxTransactionFee(new Hbar(3))
 
     // see input protobuff being sent by this ContractExecuteTransaction
     // console.log(JSON.stringify(setter._makeTransactionBody()))
-    const contractCallResult = await setter.execute(client);
-    const testing = await contractCallResult.getReceipt(client);
-    console.log("Status Code:", testing.status)
-    //console.log(JSON.stringify(testing))
+    // const contractCallResult = await setter.execute(client);
+    // const testing = await contractCallResult.getReceipt(client);
+    // console.log("Status Code:", testing.status)
+    // //console.log(JSON.stringify(testing))
 
-    const getter = await new ContractCallQuery() // 
-        .setContractId(newContractId)
-        .setFunction("get")
-        .setGas(300000)
-        .setMaxQueryPayment(new Hbar(1)) // defaults to 1, if requires more than one need change
+    // const getter = await new ContractCallQuery() // 
+    //     .setContractId(newContractId)
+    //     .setFunction("get")
+    //     .setGas(300000)
+    //     .setMaxQueryPayment(new Hbar(1)) // defaults to 1, if requires more than one need change
 
-    const contractGetter = await getter.execute(client);
-    const message = await contractGetter.getUint256(0);
-    console.log("contract message: " + message);
+    // const contractGetter = await getter.execute(client);
+    // const message = await contractGetter.getUint256(0);
+    // console.log("contract message: " + message);
 }
 main();
