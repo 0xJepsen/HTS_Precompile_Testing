@@ -1,5 +1,4 @@
 const { Client, TokenCreateTransaction, ContractCreateTransaction, FileCreateTransaction, FileId, Hbar, PrivateKey, ContractCallQuery, ContractFunctionParameters, ContractExecuteTransaction } = require("@hashgraph/sdk");
-const { createToken } = require("typescript");
 require("dotenv").config();
 const json = require('./contracts/FundMe_sol_FundMe.abi');
 
@@ -22,8 +21,8 @@ async function main () {
         .setTokenName("HTS Testing")
         .setTokenSymbol("HTS")
         .setTreasuryAccountId(myAccountId)
+        .setDecimals(4)
         .setInitialSupply(5000)
-        .setMaxTransactionFee(new Hbar(30)) //Change the default max transaction fee
         .execute(client);
 
     const TokenReceipt = await token.getReceipt(client)
