@@ -1,4 +1,5 @@
-const { Client, ContractCreateTransaction, FileCreateTransaction, FileId, Hbar, PrivateKey, ContractCallQuery, ContractFunctionParameters, ContractExecuteTransaction } = require("@hashgraph/sdk");
+const { Client, 
+    ContractCreateTransaction, FileCreateTransaction, FileId, Hbar, PrivateKey, ContractCallQuery, ContractFunctionParameters, ContractExecuteTransaction, AccountId } = require("@hashgraph/sdk");
 require("dotenv").config();
 const json = require('./contracts/FundMe_sol_FundMe.abi');
 
@@ -32,6 +33,8 @@ async function main () {
     const deploy = await new ContractCreateTransaction()
         .setGas(300)
         .setBytecodeFileId(fileid)
+        .setConstructorParameters(new ContractFunctionParameters()
+            .addAddress(AccountId.toSolidityAddress()))
         .execute(client);
 
     const receipt = await deploy.getReceipt(client); //Get the new contract 
