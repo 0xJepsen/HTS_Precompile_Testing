@@ -11,7 +11,8 @@ async function main () {
     if (myAccountId == null ||
         myPrivateKey == null ) {
         throw new Error("Environment variables myAccountId and myPrivateKey must be present");
-    }
+    } else console.log("Environment variables configured Succesfully")
+    console.log("Account ID is: ",myAccountId)
 
     const client = Client.forPreviewnet();
 
@@ -27,6 +28,7 @@ async function main () {
 
     const TokenReceipt = await token.getReceipt(client)
     const tokenID = TokenReceipt.tokenId
+    console.log("Token ID is: ", tokenID)
     
     const compiled = json['data']['bytecode']['object'];
     // Store Contact in file service. Different from eth. Transaction size is smaller on hedera for security 
