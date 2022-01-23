@@ -27,16 +27,14 @@ async function main () {
 
     const TokenReceipt = await token.getReceipt(client)
     const tokenID = TokenReceipt.tokenId
-    console.log("Token ID is: ", tokenID)
+    console.log("Token ID is: ", tokenID.toString())
     
     const compiled = json['data']['bytecode']['object'];
     // Store Contact in file service. Different from eth. Transaction size is smaller on hedera for security 
     const mycontract = await new FileCreateTransaction()
         .setContents(compiled)
-        .setKeys([PrivateKey.fromString(myPrivateKey)])
         // The default max fee of 1 HBAR is not enough to make a file ( starts around 1.1 HBAR )
-        .setMaxTransactionFee(new Hbar(2)) // 2 HBAR
-        .execute(client);
+        .execute(client)
     
     const TransactionReceipt  = await mycontract.getReceipt(client);
     const fileid =  new FileId(TransactionReceipt.fileId);
