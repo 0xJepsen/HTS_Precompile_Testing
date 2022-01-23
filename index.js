@@ -1,6 +1,6 @@
 const { Client, TokenCreateTransaction, ContractCreateTransaction, FileCreateTransaction, FileId, Hbar, PrivateKey, ContractCallQuery, ContractFunctionParameters, ContractExecuteTransaction } = require("@hashgraph/sdk");
 require("dotenv").config();
-const json = require('./contracts/FundMe_sol_FundMe.abi');
+const json = require('./Artifacts/FundMe.json');
 
 async function main () {
 
