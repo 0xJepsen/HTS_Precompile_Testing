@@ -30,6 +30,9 @@ async function main () {
     console.log("Token ID is: ", tokenID.toString())
     
     const compiled = json['data']['bytecode']['object'];
+    length = compiled.length
+    half = compiled / 2
+    console.log(length)
     // Store Contact in file service. Different from eth. Transaction size is smaller on hedera for security 
     const mycontract = await new FileCreateTransaction()
         .setContents(compiled)
