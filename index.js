@@ -1,4 +1,15 @@
-const { Client, TokenCreateTransaction, ContractCreateTransaction, FileCreateTransaction, FileId, Hbar, PrivateKey, ContractCallQuery, ContractFunctionParameters, ContractExecuteTransaction } = require("@hashgraph/sdk");
+const { 
+    Client, 
+    TokenCreateTransaction, 
+    ContractCreateTransaction, 
+    FileCreateTransaction, 
+    FileId, 
+    Hbar, 
+    PrivateKey, 
+    ContractCallQuery, 
+    FileAppendTransaction,
+    ContractFunctionParameters, 
+    ContractExecuteTransaction } = require("@hashgraph/sdk");
 require("dotenv").config();
 const json = require('./Artifacts/FundMe.json');
 
@@ -13,9 +24,7 @@ async function main () {
     } else console.log("Environment variables configured Succesfully")
     console.log("Account ID is: ",myAccountId)
 
-    const client = Client.forPreviewnet();
-
-    client.setOperator(myAccountId, myPrivateKey)
+    const client = Client.forTestnet().setOperator(myAccountId, myPrivateKey)
 
     const token = await new TokenCreateTransaction()
         .setTokenName("HTS Testing")
@@ -23,31 +32,37 @@ async function main () {
         .setTreasuryAccountId(myAccountId)
         .setDecimals(4)
         .setInitialSupply(5000)
-        .execute(client);
-
-    const TokenReceipt = await token.getReceipt(client)
-    const tokenID = TokenReceipt.tokenId
-    console.log("Token ID is: ", tokenID.toString())
+        .freezeWith(client)
+		.sign(PrivateKey.fromString(myPrivateKey));
+   
+    const tokenCreateSubmit = await token.execute(client);
+    const tokenCreateRx = await tokenCreateSubmit.getReceipt(client);
+    const tokenId = tokenCreateRx.tokenId;
+    console.log("Token ID is: ", tokenId.toString())
     
     const compiled = json['data']['bytecode']['object'];
-    length = compiled.length
-    half = compiled / 2
-    console.log(length)
     // Store Contact in file service. Different from eth. Transaction size is smaller on hedera for security 
-    const mycontract = await new FileCreateTransaction()
+	const fileCreateTx = new FileCreateTransaction().setKeys([PrivateKey.fromString(myPrivateKey)]);
+	const fileSubmit = await fileCreateTx.execute(client);
+	const fileCreateRx = await fileSubmit.getReceipt(client);
+	const bytecodeFileId = fileCreateRx.fileId;
+	console.log(`- The smart contract bytecode file ID is: ${bytecodeFileId}`);
+
+    const fileAppendTx = new FileAppendTransaction()
+        .setFileId(bytecodeFileId)
         .setContents(compiled)
-        // The default max fee of 1 HBAR is not enough to make a file ( starts around 1.1 HBAR )
-        .execute(client)
+        .setMaxChunks(10)
+        .setMaxTransactionFee(new Hbar(2));
+    const fileAppendSubmit = await fileAppendTx.execute(client);
+    const fileAppendRx = await fileAppendSubmit.getReceipt(client);
+    console.log(`- Content added: ${fileAppendRx.status} \n`);
     
-    const TransactionReceipt  = await mycontract.getReceipt(client);
-    const fileid =  new FileId(TransactionReceipt.fileId);
-    console.log("file ID: " + fileid);
     // Deploy Contract
     const deploy = await new ContractCreateTransaction()
-        .setGas(300)
-        .setBytecodeFileId(fileid)
+        .setGas(300000)
+        .setBytecodeFileId(bytecodeFileId)
         .setConstructorParameters(new ContractFunctionParameters()
-            .addAddress(tokenID.toSolidityAddress()))
+            .addAddress(tokenId.toSolidityAddress()))
         .execute(client);
 
     const receipt = await deploy.getReceipt(client); //Get the new contract 
