@@ -20,9 +20,9 @@ async function main () {
 
     if (myAccountId == null ||
         myPrivateKey == null ) {
-        throw new Error("Environment variables myAccountId and myPrivateKey must be present");
-    } else console.log("Environment variables configured Succesfully")
-    console.log("Account ID is: ",myAccountId)
+        throw new Error(" - Environment variables myAccountId and myPrivateKey must be present");
+    } else console.log("- Environment variables configured Succesfully")
+    console.log(" - Account ID is: ",myAccountId)
 
     const client = Client.forTestnet().setOperator(myAccountId, myPrivateKey)
 
@@ -38,7 +38,7 @@ async function main () {
     const tokenCreateSubmit = await token.execute(client);
     const tokenCreateRx = await tokenCreateSubmit.getReceipt(client);
     const tokenId = tokenCreateRx.tokenId;
-    console.log("Token ID is: ", tokenId.toString())
+    console.log(" - Token ID is: ", tokenId.toString())
     
     const compiled = json['data']['bytecode']['object'];
     // Store Contact in file service. Different from eth. Transaction size is smaller on hedera for security 
@@ -67,20 +67,20 @@ async function main () {
 
     const receipt = await deploy.getReceipt(client); //Get the new contract 
     const newContractId = receipt.contractId;        
-    console.log("The contract ID is " + newContractId);
+    console.log(" - The contract ID is " + newContractId);
 
-    // const setter = await new ContractExecuteTransaction()
-    //     .setContractId(newContractId)
-    //     .setGas(400000)
-    //     .setFunction("set", new ContractFunctionParameters().addUint256(7))
-    //     .setMaxTransactionFee(new Hbar(3))
+    const deposite = await new ContractExecuteTransaction()
+        .setContractId(newContractId)
+        .setGas(400000)
+        .setFunction("depositTokens", new ContractFunctionParameters().addInt64(1000))
+        .setMaxTransactionFee(new Hbar(5))
 
     // see input protobuff being sent by this ContractExecuteTransaction
     // console.log(JSON.stringify(setter._makeTransactionBody()))
-    // const contractCallResult = await setter.execute(client);
-    // const testing = await contractCallResult.getReceipt(client);
-    // console.log("Status Code:", testing.status)
-    // //console.log(JSON.stringify(testing))
+    const contractCallResult = await deposite.execute(client);
+    const testing = await contractCallResult.getReceipt(client);
+    console.log("Status Code:", testing.status)
+    console.log(JSON.stringify(testing))
 
     // const getter = await new ContractCallQuery() // 
     //     .setContractId(newContractId)
