@@ -1,95 +1,180 @@
-const { 
-    Client, 
-    TokenCreateTransaction, 
-    ContractCreateTransaction, 
-    FileCreateTransaction, 
-    FileId, 
-    Hbar, 
-    PrivateKey, 
-    ContractCallQuery, 
-    FileAppendTransaction,
-    ContractFunctionParameters, 
-    ContractExecuteTransaction } = require("@hashgraph/sdk");
+console.clear();
 require("dotenv").config();
-const json = require('./Artifacts/FundMe.json');
+const {
+	Client,
+	AccountId,
+	PrivateKey,
+	TokenCreateTransaction,
+	FileCreateTransaction,
+	FileAppendTransaction,
+	ContractCreateTransaction,
+	ContractFunctionParameters,
+	TokenUpdateTransaction,
+	ContractExecuteTransaction,
+	TokenInfoQuery,
+	AccountBalanceQuery,
+	AccountCreateTransaction,
+	Hbar,
+} = require("@hashgraph/sdk");
+const fs = require("fs");
 
-async function main () {
+const operatorId = AccountId.fromString(process.env.MY_ACCOUNT_ID);
+const operatorKey = PrivateKey.fromString(process.env.MY_PRIVATE_KEY);
+const client = Client.forTestnet().setOperator(operatorId, operatorKey);
 
-    const myAccountId = process.env.MY_ACCOUNT_ID;
-    const myPrivateKey = process.env.MY_PRIVATE_KEY;
+async function main() {
+	// STEP 1 ===================================
+	console.log(`STEP 1 ===================================`);
+	const bytecode = fs.readFileSync("./contracts_Minting_sol_Minting.bin");
+	console.log(`- Done \n`);
 
-    if (myAccountId == null ||
-        myPrivateKey == null ) {
-        throw new Error(" - Environment variables myAccountId and myPrivateKey must be present");
-    } else console.log("- Environment variables configured Succesfully")
-    console.log(" - Account ID is: ",myAccountId)
+	// STEP 2 ===================================
+	console.log(`STEP 2 ===================================`);
+	//Create a fungible token
+	const tokenCreateTx = await new TokenCreateTransaction()
+		.setTokenName("HTS Token")
+		.setTokenSymbol("HTS")
+		.setDecimals(0)
+		.setInitialSupply(100)
+		.setTreasuryAccountId(operatorId)
+		.setAdminKey(operatorKey)
+		.setSupplyKey(operatorKey)
+		.freezeWith(client)
+		.sign(operatorKey);
+	const tokenCreateSubmit = await tokenCreateTx.execute(client);
+	const tokenCreateRx = await tokenCreateSubmit.getReceipt(client);
+	const tokenId = tokenCreateRx.tokenId;
+	const tokenAddressSol = tokenId.toSolidityAddress();
+	console.log(`- Token ID: ${tokenId}`);
+	console.log(`- Token ID in Solidity format: ${tokenAddressSol}`);
 
-    const client = Client.forTestnet().setOperator(myAccountId, myPrivateKey)
+	// Token query 1
+	const tokenInfo1 = await tQueryFcn(tokenId);
+	console.log(`- Initial token supply: ${tokenInfo1.totalSupply.low} \n`);
 
-    const token = await new TokenCreateTransaction()
-        .setTokenName("HTS Testing")
-        .setTokenSymbol("HTS")
-        .setTreasuryAccountId(myAccountId)
-        .setDecimals(4)
-        .setInitialSupply(5000)
-        .freezeWith(client)
-		.sign(PrivateKey.fromString(myPrivateKey));
-   
-    const tokenCreateSubmit = await token.execute(client);
-    const tokenCreateRx = await tokenCreateSubmit.getReceipt(client);
-    const tokenId = tokenCreateRx.tokenId;
-    console.log(" - Token ID is: ", tokenId.toString())
-    
-    const compiled = json['data']['bytecode']['object'];
-    // Store Contact in file service. Different from eth. Transaction size is smaller on hedera for security 
-	const fileCreateTx = new FileCreateTransaction().setKeys([PrivateKey.fromString(myPrivateKey)]);
+	//Create a file on Hedera and store the hex-encoded bytecode
+	const fileCreateTx = new FileCreateTransaction().setKeys([operatorKey]);
 	const fileSubmit = await fileCreateTx.execute(client);
 	const fileCreateRx = await fileSubmit.getReceipt(client);
 	const bytecodeFileId = fileCreateRx.fileId;
 	console.log(`- The smart contract bytecode file ID is: ${bytecodeFileId}`);
 
-    const fileAppendTx = new FileAppendTransaction()
-        .setFileId(bytecodeFileId)
-        .setContents(compiled)
-        .setMaxChunks(10)
-        .setMaxTransactionFee(new Hbar(2));
-    const fileAppendSubmit = await fileAppendTx.execute(client);
-    const fileAppendRx = await fileAppendSubmit.getReceipt(client);
-    console.log(`- Content added: ${fileAppendRx.status} \n`);
-    
-    // Deploy Contract
-    const deploy = await new ContractCreateTransaction()
-        .setGas(300000)
-        .setBytecodeFileId(bytecodeFileId)
-        .setConstructorParameters(new ContractFunctionParameters()
-            .addAddress(tokenId.toSolidityAddress()))
+	// Append contents to the file
+	const fileAppendTx = new FileAppendTransaction()
+		.setFileId(bytecodeFileId)
+		.setContents(bytecode)
+		.setMaxChunks(10)
+		.setMaxTransactionFee(new Hbar(2));
+	const fileAppendSubmit = await fileAppendTx.execute(client);
+	const fileAppendRx = await fileAppendSubmit.getReceipt(client);
+	console.log(`- Content added: ${fileAppendRx.status} \n`);
+
+	// STEP 3 ===================================
+	console.log(`STEP 3 ===================================`);
+	// Create the smart contract
+	const contractInstantiateTx = new ContractCreateTransaction()
+		.setBytecodeFileId(bytecodeFileId)
+		.setGas(3000000)
+		.setConstructorParameters(new ContractFunctionParameters().addAddress(tokenAddressSol));
+	const contractInstantiateSubmit = await contractInstantiateTx.execute(client);
+	const contractInstantiateRx = await contractInstantiateSubmit.getReceipt(client);
+	const contractId = contractInstantiateRx.contractId;
+	const contractAddress = contractId.toSolidityAddress();
+	console.log(`- The smart contract ID is: ${contractId}`);
+	console.log(`- The smart contract ID in Solidity format is: ${contractAddress} \n`);
+
+	// Token query 2.1
+	const tokenInfo2p1 = await tQueryFcn(tokenId);
+	console.log(`- Token supply key: ${tokenInfo2p1.supplyKey.toString()}`);
+
+	// Update the fungible token so the smart contract manages the supply
+	const tokenUpdateTx = await new TokenUpdateTransaction()
+		.setTokenId(tokenId)
+		.setSupplyKey(contractId)
+		.freezeWith(client)
+		.sign(operatorKey);
+	const tokenUpdateSubmit = await tokenUpdateTx.execute(client);
+	const tokenUpdateRx = await tokenUpdateSubmit.getReceipt(client);
+	console.log(`- Token update status: ${tokenUpdateRx.status}`);
+
+	// Token query 2.2
+	const tokenInfo2p2 = await tQueryFcn(tokenId);
+	console.log(`- New token supply key: ${tokenInfo2p2.supplyKey.toString()} \n`);
+
+	// STEP 4 ===================================
+	console.log(`STEP 4 ===================================`);
+	//Execute a contract function (mint)
+	const contractExecTx = await new ContractExecuteTransaction()
+		.setContractId(contractId)
+		.setGas(3000000)
+		.setFunction("mintFungibleToken", 
+			new ContractFunctionParameters().addUint64(150))
+		.setMaxTransactionFee(new Hbar(2));
+	const contractExecSubmit = await contractExecTx.execute(client);
+	console.log("Testing")
+	const contractExecRx = await contractExecSubmit.getReceipt(client);
+	console.log(`- New tokens minted: ${contractExecRx.status.toString()}`);
+
+	// Token query 3
+	const tokenInfo3 = await tQueryFcn(tokenId);
+	console.log(`- New token supply: ${tokenInfo3.totalSupply.low} \n`);
+
+	const alicePrivateKey = await PrivateKey.generateED25519();
+    const alicePublicKey = alicePrivateKey.publicKey;
+
+    const aliceCreateAccount = await new AccountCreateTransaction()
+        .setKey(alicePublicKey)
         .execute(client);
 
-    const receipt = await deploy.getReceipt(client); //Get the new contract 
-    const newContractId = receipt.contractId;        
-    console.log(" - The contract ID is " + newContractId);
+    const aliceReceipt = await aliceCreateAccount.getReceipt(client);
+    const aliceAcountId = aliceReceipt.accountId;
 
-    const deposite = await new ContractExecuteTransaction()
-        .setContractId(newContractId)
-        .setGas(400000)
-        .setFunction("depositTokens", new ContractFunctionParameters().addInt64(1000))
-        .setMaxTransactionFee(new Hbar(5))
+	//Execute a contract function (associate)
+	const contractExecTx1 = await new ContractExecuteTransaction()
+		.setContractId(contractId)
+		.setGas(3000000)
+		.setFunction("tokenAssociate", new ContractFunctionParameters().addAddress(aliceAcountId.toSolidityAddress()))
+		.setMaxTransactionFee(new Hbar(2))
+		.freezeWith(client);
+	const contractExecSign1 = await contractExecTx1.sign(alicePrivateKey);
+	const contractExecSubmit1 = await contractExecSign1.execute(client);
+	const contractExecRx1 = await contractExecSubmit1.getReceipt(client);
+	console.log(`- Token association with Alice's account: ${contractExecRx1.status.toString()} \n`);
 
-    // see input protobuff being sent by this ContractExecuteTransaction
-    // console.log(JSON.stringify(setter._makeTransactionBody()))
-    const contractCallResult = await deposite.execute(client);
-    const testing = await contractCallResult.getReceipt(client);
-    console.log("Status Code:", testing.status)
-    console.log(JSON.stringify(testing))
+	//Execute a contract function (transfer)
+	const contractExecTx2 = await new ContractExecuteTransaction()
+		.setContractId(contractId)
+		.setGas(3000000)
+		.setFunction(
+			"tokenTransfer",
+			new ContractFunctionParameters()
+				.addAddress(operatorId.toSolidityAddress())
+				.addAddress(aliceAcountId.toSolidityAddress())
+				.addInt64(50)
+		)
+		.setMaxTransactionFee(new Hbar(2))
+		.freezeWith(client);
+	const contractExecSign2 = await contractExecTx2.sign(operatorKey);
+	const contractExecSubmit2 = await contractExecSign2.execute(client);
+	const contractExecRx2 = await contractExecSubmit2.getReceipt(client);
 
-    // const getter = await new ContractCallQuery() // 
-    //     .setContractId(newContractId)
-    //     .setFunction("get")
-    //     .setGas(300000)
-    //     .setMaxQueryPayment(new Hbar(1)) // defaults to 1, if requires more than one need change
+	console.log(`- Token transfer from Treasury to Alice: ${contractExecRx2.status.toString()}`);
 
-    // const contractGetter = await getter.execute(client);
-    // const message = await contractGetter.getUint256(0);
-    // console.log("contract message: " + message);
+	tB = await bCheckerFcn(operatorId);
+	aB = await bCheckerFcn(aliceAcountId);
+	console.log(`- Treasury balance: ${tB} units of token: ${tokenId}`);
+	console.log(`- Alice balance: ${aB} units of token: ${tokenId} \n`);
+
+	// ========================================
+	// FUNCTIONS
+
+	async function tQueryFcn(tId) {
+		return new TokenInfoQuery().setTokenId(tId).execute(client);
+	}
+
+	async function bCheckerFcn(aId) {
+		let balanceCheckTx = await new AccountBalanceQuery().setAccountId(aId).execute(client);
+		return balanceCheckTx.tokens._map.get(tokenId.toString());
+	}
 }
 main();

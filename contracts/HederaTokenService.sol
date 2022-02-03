@@ -14,7 +14,7 @@ abstract contract HederaTokenService is HederaResponseCodes {
     function cryptoTransfer(
         IHederaTokenService.TokenTransferList[] memory tokenTransfers
     ) internal returns (int256 responseCode) {
-        (bool success, bytes memory result) = precompileAddress.delegatecall(
+        (bool success, bytes memory result) = precompileAddress.call(
             abi.encodeWithSelector(
                 IHederaTokenService.cryptoTransfer.selector,
                 tokenTransfers
@@ -45,10 +45,10 @@ abstract contract HederaTokenService is HederaResponseCodes {
         returns (
             int256 responseCode,
             uint64 newTotalSupply,
-            int256[] memory serialNumbers
+            int64[] memory serialNumbers
         )
     {
-        (bool success, bytes memory result) = precompileAddress.delegatecall(
+        (bool success, bytes memory result) = precompileAddress.call(
             abi.encodeWithSelector(
                 IHederaTokenService.mintToken.selector,
                 token,
@@ -57,11 +57,11 @@ abstract contract HederaTokenService is HederaResponseCodes {
             )
         );
         (responseCode, newTotalSupply, serialNumbers) = success
-            ? abi.decode(result, (int32, uint64, int256[]))
-            : (HederaResponseCodes.UNKNOWN, 0, new int256[](0));
+            ? abi.decode(result, (int32, uint64, int64[]))
+            : (HederaResponseCodes.UNKNOWN, 0, new int64[](0));
     }
 
-    /// Burns an amount fo teh token from the define treasury account
+    /// Burns an amount of the token from the defined treasury account
     /// @param token The token for which to burn tokens. If token does not exist, transaction results in
     ///              INVALID_TOKEN_ID
     /// @param amount  Applicable to tokens of type FUNGIBLE_COMMON. The amount to burn from the Treasury Account.
@@ -75,7 +75,7 @@ abstract contract HederaTokenService is HederaResponseCodes {
         uint64 amount,
         int64[] memory serialNumbers
     ) internal returns (int256 responseCode, uint64 newTotalSupply) {
-        (bool success, bytes memory result) = precompileAddress.delegatecall(
+        (bool success, bytes memory result) = precompileAddress.call(
             abi.encodeWithSelector(
                 IHederaTokenService.burnToken.selector,
                 token,
@@ -109,7 +109,7 @@ abstract contract HederaTokenService is HederaResponseCodes {
         internal
         returns (int256 responseCode)
     {
-        (bool success, bytes memory result) = precompileAddress.delegatecall(
+        (bool success, bytes memory result) = precompileAddress.call(
             abi.encodeWithSelector(
                 IHederaTokenService.associateTokens.selector,
                 account,
@@ -125,7 +125,7 @@ abstract contract HederaTokenService is HederaResponseCodes {
         internal
         returns (int256 responseCode)
     {
-        (bool success, bytes memory result) = precompileAddress.delegatecall(
+        (bool success, bytes memory result) = precompileAddress.call(
             abi.encodeWithSelector(
                 IHederaTokenService.associateToken.selector,
                 account,
@@ -159,7 +159,7 @@ abstract contract HederaTokenService is HederaResponseCodes {
         internal
         returns (int256 responseCode)
     {
-        (bool success, bytes memory result) = precompileAddress.delegatecall(
+        (bool success, bytes memory result) = precompileAddress.call(
             abi.encodeWithSelector(
                 IHederaTokenService.dissociateTokens.selector,
                 account,
@@ -175,7 +175,7 @@ abstract contract HederaTokenService is HederaResponseCodes {
         internal
         returns (int256 responseCode)
     {
-        (bool success, bytes memory result) = precompileAddress.delegatecall(
+        (bool success, bytes memory result) = precompileAddress.call(
             abi.encodeWithSelector(
                 IHederaTokenService.dissociateToken.selector,
                 account,
@@ -200,7 +200,7 @@ abstract contract HederaTokenService is HederaResponseCodes {
         address[] memory accountIds,
         int64[] memory amounts
     ) internal returns (int256 responseCode) {
-        (bool success, bytes memory result) = precompileAddress.delegatecall(
+        (bool success, bytes memory result) = precompileAddress.call(
             abi.encodeWithSelector(
                 IHederaTokenService.transferTokens.selector,
                 token,
@@ -224,7 +224,7 @@ abstract contract HederaTokenService is HederaResponseCodes {
         address[] memory receiver,
         int64[] memory serialNumber
     ) internal returns (int256 responseCode) {
-        (bool success, bytes memory result) = precompileAddress.delegatecall(
+        (bool success, bytes memory result) = precompileAddress.call(
             abi.encodeWithSelector(
                 IHederaTokenService.transferNFTs.selector,
                 token,
@@ -251,7 +251,7 @@ abstract contract HederaTokenService is HederaResponseCodes {
         address receiver,
         int64 amount
     ) internal returns (int256 responseCode) {
-        (bool success, bytes memory result) = precompileAddress.delegatecall(
+        (bool success, bytes memory result) = precompileAddress.call(
             abi.encodeWithSelector(
                 IHederaTokenService.transferToken.selector,
                 token,
@@ -271,20 +271,20 @@ abstract contract HederaTokenService is HederaResponseCodes {
     /// @param token The token to transfer to/from
     /// @param sender The sender for the transaction
     /// @param receiver The receiver of the transaction
-    /// @param serialNum The serial number of the NFT to transfer.
+    /// @param serialNumber The serial number of the NFT to transfer.
     function transferNFT(
         address token,
         address sender,
         address receiver,
-        int64 serialNum
+        int64 serialNumber
     ) internal returns (int256 responseCode) {
-        (bool success, bytes memory result) = precompileAddress.delegatecall(
+        (bool success, bytes memory result) = precompileAddress.call(
             abi.encodeWithSelector(
                 IHederaTokenService.transferNFT.selector,
                 token,
                 sender,
                 receiver,
-                serialNum
+                serialNumber
             )
         );
         responseCode = success

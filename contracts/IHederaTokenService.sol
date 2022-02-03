@@ -50,7 +50,7 @@ interface IHederaTokenService {
     /// Initiates a Token Transfer
     /// @param tokenTransfers the list of transfers to do
     /// @return responseCode The response code for the status of the request. SUCCESS is 22.
-    function cryptoTransfer(TokenTransferList[] calldata tokenTransfers)
+    function cryptoTransfer(TokenTransferList[] memory tokenTransfers)
         external
         returns (int256 responseCode);
 
@@ -63,11 +63,19 @@ interface IHederaTokenService {
     /// @param metadata Applicable to tokens of type NON_FUNGIBLE_UNIQUE. A list of metadata that are being created.
     ///                 Maximum allowed size of each metadata is 100 bytes
     /// @return responseCode The response code for the status of the request. SUCCESS is 22.
+    /// @return newTotalSupply The new supply of tokens. For NFTs it is the total count of NFTs
+    /// @return serialNumbers If the token is an NFT the newly generate serial numbers, othersise empty.
     function mintToken(
         address token,
         uint64 amount,
-        bytes calldata metadata
-    ) external returns (int256 responseCode);
+        bytes[] memory metadata
+    )
+        external
+        returns (
+            int256 responseCode,
+            uint64 newTotalSupply,
+            int64[] memory serialNumbers
+        );
 
     /// Burns an amount of the token from the defined treasury account
     /// @param token The token for which to burn tokens. If token does not exist, transaction results in
@@ -77,11 +85,12 @@ interface IHederaTokenService {
     ///                account (0; balance], represented in the lowest denomination.
     /// @param serialNumbers Applicable to tokens of type NON_FUNGIBLE_UNIQUE. The list of serial numbers to be burned.
     /// @return responseCode The response code for the status of the request. SUCCESS is 22.
+    /// @return newTotalSupply The new supply of tokens. For NFTs it is the total count of NFTs
     function burnToken(
         address token,
         uint64 amount,
-        int64[] calldata serialNumbers
-    ) external returns (int256 responseCode);
+        int64[] memory serialNumbers
+    ) external returns (int256 responseCode, uint64 newTotalSupply);
 
     ///  Associates the provided account with the provided tokens. Must be signed by the provided
     ///  Account's key or called from the accounts contract key
@@ -100,7 +109,7 @@ interface IHederaTokenService {
     ///               Type, once an account is associated, it can hold any number of NFTs (serial numbers) of that
     ///               token type
     /// @return responseCode The response code for the status of the request. SUCCESS is 22.
-    function associateTokens(address account, address[] calldata tokens)
+    function associateTokens(address account, address[] memory tokens)
         external
         returns (int256 responseCode);
 
@@ -129,7 +138,7 @@ interface IHederaTokenService {
     /// @param account The account to be dissociated from the provided tokens
     /// @param tokens The tokens to be dissociated from the provided account.
     /// @return responseCode The response code for the status of the request. SUCCESS is 22.
-    function dissociateTokens(address account, address[] calldata tokens)
+    function dissociateTokens(address account, address[] memory tokens)
         external
         returns (int256 responseCode);
 
@@ -150,8 +159,8 @@ interface IHederaTokenService {
     /// @param amount The amount from the accountId at the same index
     function transferTokens(
         address token,
-        address[] calldata accountId,
-        int64[] calldata amount
+        address[] memory accountId,
+        int64[] memory amount
     ) external returns (int256 responseCode);
 
     /// Initiates a Non-Fungable Token Transfer
@@ -161,9 +170,9 @@ interface IHederaTokenService {
     /// @param serialNumber the serial number of the nft sent by the same index at sender
     function transferNFTs(
         address token,
-        address[] calldata sender,
-        address[] calldata receiver,
-        int64[] calldata serialNumber
+        address[] memory sender,
+        address[] memory receiver,
+        int64[] memory serialNumber
     ) external returns (int256 responseCode);
 
     /// Transfers tokens where the calling account/contract is implicitly the first entry in the token transfer list,
@@ -186,11 +195,11 @@ interface IHederaTokenService {
     /// @param token The token to transfer to/from
     /// @param sender The sender for the transaction
     /// @param recipient The receiver of the transaction
-    /// @param serialNum The serial number of the NFT to transfer.
+    /// @param serialNumber The serial number of the NFT to transfer.
     function transferNFT(
         address token,
         address sender,
         address recipient,
-        int64 serialNum
+        int64 serialNumber
     ) external returns (int256 responseCode);
 }
