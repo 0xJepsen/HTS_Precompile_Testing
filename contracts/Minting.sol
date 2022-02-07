@@ -1,6 +1,6 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
+
 pragma solidity ^0.8.11;
-pragma experimental ABIEncoderV2;
 
 import "./HederaTokenService.sol";
 import "./HederaResponseCodes.sol";
@@ -8,7 +8,7 @@ import "./HederaResponseCodes.sol";
 contract Minting is HederaTokenService {
     address tokenAddress;
 
-    constructor(address _tokenAddress) public {
+    constructor(address _tokenAddress) {
         tokenAddress = _tokenAddress;
     }
 
@@ -29,9 +29,8 @@ contract Minting is HederaTokenService {
             _account,
             tokenAddress
         );
-
         if (response != HederaResponseCodes.SUCCESS) {
-            revert("Associate Failed");
+            revert("Mint Failed");
         }
     }
 
@@ -46,9 +45,8 @@ contract Minting is HederaTokenService {
             _receiver,
             _amount
         );
-
         if (response != HederaResponseCodes.SUCCESS) {
-            revert("Transfer Failed");
+            revert("Mint Failed");
         }
     }
 }
