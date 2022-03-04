@@ -12,6 +12,7 @@ contract Minting is HederaTokenService {
         tokenAddress = _tokenAddress;
     }
 
+    //Mint
     function mintFungibleToken(uint64 _amount) external {
         (
             int256 response,
@@ -24,16 +25,19 @@ contract Minting is HederaTokenService {
         }
     }
 
+    // Associate
     function tokenAssociate(address _account) external {
         int256 response = HederaTokenService.associateToken(
             _account,
             tokenAddress
         );
+
         if (response != HederaResponseCodes.SUCCESS) {
-            revert("Mint Failed");
+            revert("Associate Failed");
         }
     }
 
+    // Transfer
     function tokenTransfer(
         address _sender,
         address _receiver,
@@ -45,8 +49,9 @@ contract Minting is HederaTokenService {
             _receiver,
             _amount
         );
+
         if (response != HederaResponseCodes.SUCCESS) {
-            revert("Mint Failed");
+            revert("Token Transfer Failed");
         }
     }
 }
