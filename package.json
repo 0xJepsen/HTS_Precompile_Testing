@@ -17,7 +17,7 @@
   },
   "homepage": "https://github.com/0xJepsen/HTS_Precompile_Testing#readme",
   "dependencies": {
-    "@hashgraph/sdk": "^2.7.0-beta.3",
+    "@hashgraph/sdk": "^2.29.0",
     "dotenv": "^11.0.0",
     "solc": "^0.8.11"
   }
